@@ -1,7 +1,10 @@
 width = document.getElementById("sankey").clientWidth
 height = document.getElementById("sankey").clientHeight
-node_color_info = new Map()
+node_radius = document.getElementById("rangeNodeRadius").value;
+opacity = document.getElementById("rangeOpacity").value;
 
+node_color_info = new Map()
+console.log("node_radius in sankey:", node_radius);
 var svg = d3.select("#sankey").append("svg")
     .attr("width", width)
     .attr("height", height)
@@ -27,15 +30,12 @@ colors = [
     "#f3d999", //24
     "#f5e8c8", //21
     "#b8d2c7", //22
-
     "#edafda",
     "#d3758f", //25
-
     "#f58db2",
     "#f2b3c9",
     "#cbb0e3",
     "#9a7fd1", //16
-
     "#2ec7c9", //9
     "#b6a2de", //10
     "#5ab1ef", //11
@@ -50,37 +50,38 @@ colors = [
 ]
 //不同算法对比
 $("#sampling").on("click", function () {
+    console.log("draw_sankey")
     d3.select("#sankey").selectAll("#link_sky").remove()
     d3.select("#sankey").selectAll("#ori_node").remove()
     d3.select("#sankey").selectAll("#sam_node").remove()
 
-    temp_str = $(".jws-text").text();
-    temp_str = parseInt(temp_str.substring(0, temp_str.length - 1))
-    temp_str = temp_str - (temp_str % 5)
-    path = ""
+    samplingRatio = $(".jws-text").text();
+    samplingRatio = parseInt(samplingRatio.substring(0, samplingRatio.length - 1))
+    samplingRatio = samplingRatio - (samplingRatio % 5)
+    sampledComFilePath = ""
 
     if ($("#No1").val() == "forestfire") {
-        if (temp_str >= 5 && temp_str <= 80) path = `data/ansdata/filepath${temp_str}_com.csv`
-        else if (temp_str < 5) path = `data/ansdata/filepath5_com.csv`
-        else if (temp_str > 80) path = `data/ansdata/filepath80_com.csv`
+        if (samplingRatio >= 5 && samplingRatio <= 80) sampledComFilePath = `data/ansdata/filepath${samplingRatio}_com.csv`
+        else if (samplingRatio < 5) sampledComFilePath = `data/ansdata/filepath5_com.csv`
+        else if (samplingRatio > 80) sampledComFilePath = `data/ansdata/filepath80_com.csv`
     } else if ($("#No1").val() == "based on node") {
-        if (temp_str >= 5 && temp_str <= 45) path = `data/bondata/bon${temp_str}_com.csv`
-        else if (temp_str < 5) path = `data/bondata/bon5_com.csv`
-        else if (temp_str > 45) path = `data/bondata/bon45_com.csv`
+        if (samplingRatio >= 5 && samplingRatio <= 45) sampledComFilePath = `data/bondata/bon${samplingRatio}_com.csv`
+        else if (samplingRatio < 5) path = `data/bondata/bon5_com.csv`
+        else if (samplingRatio > 45) sampledComFilePath = `data/bondata/bon45_com.csv`
     } else if ($("#No1").val() == "randomwalk") {
-        if (temp_str >= 5 && temp_str <= 45) path = `data/rmdata/rm${temp_str}_com.csv`
-        else if (temp_str < 5) path = `data/rmdata/rm5_com.csv`
-        else if (temp_str > 45) path = `data/rmdata/rm45_com.csv`
+        if (samplingRatio >= 5 && samplingRatio <= 45) sampledComFilePath = `data/rmdata/rm${samplingRatio}_com.csv`
+        else if (samplingRatio < 5) sampledComFilePath = `data/rmdata/rm5_com.csv`
+        else if (samplingRatio > 45) sampledComFilePath = `data/rmdata/rm45_com.csv`
     }
-    draw_sankey(path, temp_str)
+    draw_sankey(sampledComFilePath, samplingRatio)
 })
 
-function draw_sankey(path, temp_str) {
+function draw_sankey(path, samplingRatio) {
     d3.csv("data/ansdata/filepath_ori_com.csv", function (ori_nodes1) {
         d3.csv(path, function (sam_nodes1) {
             ans = find_com(50, ori_nodes1, sam_nodes1)
             ori_node_map = deal_ori_data(ans, ori_nodes1)
-            sam_node_map = deal_sam_data(ans, sam_nodes1, temp_str)
+            sam_node_map = deal_sam_data(ans, sam_nodes1, samplingRatio)
             color_map_new(ans.diff_vector, ori_node_map, sam_node_map)
             draw_ori_node(ans, ori_node_map)
             draw_sam_node(ans, sam_node_map)
@@ -90,19 +91,19 @@ function draw_sankey(path, temp_str) {
         })
     })
 }
-d3.csv("data/ansdata/filepath_ori_com.csv", function (ori_nodes1) {
-    d3.csv("data/ansdata/filepath80_com.csv", function (sam_nodes1) {
-        ans = find_com(50, ori_nodes1, sam_nodes1)
-        ori_node_map = deal_ori_data(ans, ori_nodes1)
-        sam_node_map = deal_sam_data(ans, sam_nodes1, 80)
-        color_map_new(ans.diff_vector, ori_node_map, sam_node_map)
-        draw_ori_node(ans, ori_node_map)
-        draw_sam_node(ans, sam_node_map)
-        link_data = deal_link_data(ans, ori_node_map, sam_node_map)
-        draw_san_link(link_data)
-        ori_node_colormap(ori_nodes1,sam_nodes1,ori_node_map)
-    })
-})
+// d3.csv("data/ansdata/filepath_ori_com.csv", function (ori_nodes1) {
+//     d3.csv("data/ansdata/filepath80_com.csv", function (sam_nodes1) {
+//         ans = find_com(50, ori_nodes1, sam_nodes1)
+//         ori_node_map = deal_ori_data(ans, ori_nodes1)
+//         sam_node_map = deal_sam_data(ans, sam_nodes1, 80)
+//         color_map_new(ans.diff_vector, ori_node_map, sam_node_map)
+//         draw_ori_node(ans, ori_node_map)
+//         draw_sam_node(ans, sam_node_map)
+//         link_data = deal_link_data(ans, ori_node_map, sam_node_map)
+//         draw_san_link(link_data)
+//         ori_node_colormap(ori_nodes1,sam_nodes1,ori_node_map)
+//     })
+// })
 //处理数据
 function find_com(numbers_of_com, ori_nodes, sam_nodes) {
     ori_com_num = new Set()
@@ -220,6 +221,9 @@ function color_map_new(diff_vector, ori_node_map, sam_node_map) {
     sam_node_map.forEach(function (value, key) {
         if (value.color == undefined) value.color = color(value.id)
     })
+
+    console.log("ori_node_map: ", ori_node_map)
+    console.log("sam_node_map: ", sam_node_map)
 }
 //原始节点处理
 function deal_ori_data(ans, ori_nodes) {
@@ -239,7 +243,7 @@ function deal_ori_data(ans, ori_nodes) {
         node_info[Number(ori_nodes[i].com)] += 1
     }
     node_info_map = new Map()
-    for( i=0; i<com_max; i++ ){
+    for( i=0; i<=com_max; i++ ){
         a = {
             id:i,
             node_num:node_info[i]
@@ -254,7 +258,7 @@ function deal_ori_data(ans, ori_nodes) {
 
     var scale = d3.scaleLinear().domain([0, ori_nodes.length]).range([0, width- 5 - (com_max - 1) * 2])
     var temp_start = 20
-    for (var i = 0; i < com_max; i++) {
+    for (var i = 0; i <= com_max; i++) {
         rect_id = node_info[i][0]
         var a = {
             "id": node_info_map.get(rect_id).id,
@@ -312,7 +316,7 @@ function draw_ori_node(ans, ori_node_map) {
             d3.selectAll("#original_node")
                 // .style("fill", "#ccc")
                 .style("stroke-width", 0)
-                .attr("r", 7)
+                .attr("r", node_radius)
 
             d3.selectAll("#link_sky")
                 .style("fill-opacity", function (dd) {
@@ -337,7 +341,7 @@ function draw_ori_node(ans, ori_node_map) {
                     .attr("id", function (dd) {
                         if (array_temp.indexOf(Number(dd.id)) >= 0) {
                             d3.select(this)
-                                .attr("r", 9)
+                                .attr("r", Number(node_radius)+5)
                                 .style("fill", d.color)
                                 .style("stroke", sam_node_map.get(key).color)
                                 .style("stroke-width", 5)
@@ -433,7 +437,7 @@ function draw_sam_node(ans, sam_node_map) {
             d3.selectAll("#original_node")
                 // .style("fill", "#ccc")
                 .style("stroke-width", 0)
-                .attr("r", 7)
+                .attr("r", node_radius)
 
             d3.selectAll("#link_sky")
                 .style("fill-opacity", function (dd) {
@@ -446,8 +450,8 @@ function draw_sam_node(ans, sam_node_map) {
                     .attr("id", function (dd) {
                         if (array_temp.indexOf(Number(dd.id)) >= 0) {
                             d3.select(this)
-                                .attr("r", 9)
-                                .style("stroke", d.color)
+                                .attr("r", Number(node_radius)+5)
+                                .style("stroke", Number(node_radius))
                                 // .style("stroke", ori_node_map.get(key).color)
                                 .style("stroke-width", 5)
                         }
@@ -503,7 +507,7 @@ function draw_san_link(link_data) {
         x3 = xi(1 - curvature)
         y0 = 44
         y1 = 205
-        temp_str = "M" + x0 + "," + y0 +
+        samplingRatio = "M" + x0 + "," + y0 +
             " C" + x2 + "," + y0 +
             " " + x3 + "," + y1 +
             " " + x1 + "," + y1 +
@@ -515,7 +519,7 @@ function draw_san_link(link_data) {
         x3 = xi(1 - curvature)
         y0 = 205
         y1 = 44
-        return temp_str +
+        return samplingRatio +
             " C" + x2 + "," + y0 +
             " " + x3 + "," + y1 +
             " " + x1 + "," + y1 +
@@ -538,8 +542,6 @@ function draw_san_link(link_data) {
 }
 //
 function ori_node_colormap(ori_nodes,sam_nodes,ori_node_map){
-    d3.selectAll("#original_node")
-        .style("stroke_width",0)
     temp_map = new Map()
     for( i=0; i<sam_nodes.length; i++ ){
         for( j=0; j<ori_nodes.length; j++ ){
@@ -553,10 +555,28 @@ function ori_node_colormap(ori_nodes,sam_nodes,ori_node_map){
         }
     }
     node_color_info = temp_map
+    
+    var sampledNodes = [];
+    for( i=0; i<sam_nodes.length; i++ ){
+        sampledNodes.push(Number(sam_nodes[i].id));
+    }
+    var nodesComMap = new Map();
+    for( i=0; i<ori_nodes.length; i++ ){
+        nodesComMap.set(Number(ori_nodes[i].id), ori_nodes[i].com);
+    }
+    console.log("node_color_info:",node_color_info);
     d3.selectAll("#original_node")
         .style("fill",function(d){
-            if(temp_map.has(Number(d.id))) return node_color_info.get(Number(d.id)).color
-            else return "#ccc"
+            return ori_node_map.get(Number(nodesComMap.get(Number(d.id)))).color
+        }).attr("opacity", function(d){
+            if(sampledNodes.indexOf(Number(d.id))>=0) {
+                d3.select(this).attr("class", "sampled")
+                return 1.0
+            }
+            else {
+                d3.select(this).attr("class", "unsampled")
+                return opacity/100.0;
+            }
         })
 }
 // function dragmove(d) {
