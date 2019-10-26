@@ -91,20 +91,8 @@ function draw_sankey(path, samplingRatio) {
         })
     })
 }
-// d3.csv("data/ansdata/filepath_ori_com.csv", function (ori_nodes1) {
-//     d3.csv("data/ansdata/filepath80_com.csv", function (sam_nodes1) {
-//         ans = find_com(50, ori_nodes1, sam_nodes1)
-//         ori_node_map = deal_ori_data(ans, ori_nodes1)
-//         sam_node_map = deal_sam_data(ans, sam_nodes1, 80)
-//         color_map_new(ans.diff_vector, ori_node_map, sam_node_map)
-//         draw_ori_node(ans, ori_node_map)
-//         draw_sam_node(ans, sam_node_map)
-//         link_data = deal_link_data(ans, ori_node_map, sam_node_map)
-//         draw_san_link(link_data)
-//         ori_node_colormap(ori_nodes1,sam_nodes1,ori_node_map)
-//     })
-// })
-//处理数据
+
+//处理数据 
 function find_com(numbers_of_com, ori_nodes, sam_nodes) {
     ori_com_num = new Set()
     sam_com_num = new Set()
@@ -246,15 +234,22 @@ function deal_ori_data(ans, ori_nodes) {
     for( i=0; i<=com_max; i++ ){
         a = {
             id:i,
-            node_num:node_info[i]
+            node_num:node_info[i],
+            info_entropy:0
         }
+        a.info_entropy = add_information_entropy(ans,"orignal",a.id)
         node_info_map.set(i,a)
     }
+    //原始社区排序,node_info有序序列
     node_info = Array.from(node_info_map)
+    //原始社区按照大小排序
     node_info.sort(function(a,b){
         return b[1].node_num-a[1].node_num
     })
-    // console.log(node_info)
+    //原始社区按照信息熵排序
+    node_info.sort(function(a,b){
+        return b[1].info_entropy - a[1].info_entropy
+    })
 
     var scale = d3.scaleLinear().domain([0, ori_nodes.length]).range([0, width- 5 - (com_max - 1) * 2])
     var temp_start = 20
@@ -270,6 +265,7 @@ function deal_ori_data(ans, ori_nodes) {
         }
         temp_start += scale(node_info_map.get(rect_id).node_num)
         temp_start += 2
+        a.info_entropy = add_information_entropy(ans,"orignal",a.id)
         ori_node_map.set(rect_id, a)
     }
     ori_node_map.com_max = com_max
@@ -281,9 +277,6 @@ function draw_ori_node(ans, ori_node_map) {
     diff_vector = ans.diff_vector
     diff_vector2 = ans.diff_vector2
 
-    ori_node_map.forEach(function (value, key) {
-        value.info_entro = diff_vector[key].size
-    })
     com_node_temp = Array.from(ori_node_map)
     com_node = []
     for (var i = 0; i < com_node_temp.length; i++) com_node.push(com_node_temp[i][1])
@@ -324,17 +317,6 @@ function draw_ori_node(ans, ori_node_map) {
                     else return 0.4
                 })
 
-            //属于某个社区,采样没采到
-            // var array_temp2 = diff_map.get(d.id + 'ori')
-            // d3.selectAll("#original_node")
-            //     .attr("id", function (dd) {
-            //         if (array_temp2.indexOf(Number(dd.id)) >= 0) {
-            //             d3.select(this)
-            //                 // .attr("r", 20)
-            //                 .style("fill", d.color)
-            //         }
-            //         return "original_node"
-            //     })
             diff_vector[d.id].forEach(function (value, key) {
                 var array_temp = diff_map.get(d.id + 'ori,' + key + 'sam')
                 d3.selectAll("#original_node")
@@ -380,6 +362,7 @@ function deal_sam_data(ans, sam_nodes, smp_data) {
             "dx": ori_node_map.get(ori_ind).dx,
             "num_of_node": node_info.get(i),
         }
+        a.info_entropy = add_information_entropy(ans,"sampling",a.id)
         sam_node_map.set(i, a)
     }
     //解决覆盖问题
@@ -579,17 +562,30 @@ function ori_node_colormap(ori_nodes,sam_nodes,ori_node_map){
             }
         })
 }
-// function dragmove(d) {
-//     d3.select(this)
-//         .attr("transform", "translate(" + (d.dx = Math.max(0, Math.min(950, d3.event.x - d.width / 2))) + "," + d.dy + ")")
-//     sam_node_map.get(d.id).dx = Math.max(0, Math.min(950, d3.event.x - d.width / 2))
-//     redraw()
-// }
-
-// function redraw(d) {
-//     d3.selectAll("#sam_node").remove()
-//     d3.selectAll("#link_sky").remove()
-//     draw_sam_node(ans, sam_node_map)
-//     link_data = deal_link_data(ans, ori_node_map, sam_node_map)
-//     draw_san_link(link_data)
-// }
+//添加信息熵属性
+function add_information_entropy(ans,flag,community_id){
+    if(flag == 'orignal'){
+        diff_vector = ans.diff_vector
+        ans_info_entropy = 0
+        sampled_nodes_sum = 0
+        diff_vector[community_id].forEach(function(value,key){
+            sampled_nodes_sum += value
+        })
+        diff_vector[community_id].forEach(function(value,key){
+            ans_info_entropy = ans_info_entropy + Math.log(value/(sampled_nodes_sum))/Math.log(2)*value/(sampled_nodes_sum)
+        })
+        return -ans_info_entropy
+    }
+    else{
+        diff_vector2 = ans.diff_vector2
+        ans_info_entropy = 0
+        sampled_nodes_sum = 0
+        diff_vector2[community_id].forEach(function(value,key){
+            sampled_nodes_sum += value
+        })
+        diff_vector2[community_id].forEach(function(value,key){
+            ans_info_entropy = ans_info_entropy + Math.log(value/(sampled_nodes_sum))/Math.log(2)*value/(sampled_nodes_sum)
+        })
+        return -ans_info_entropy
+    }
+}
