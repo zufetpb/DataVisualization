@@ -13,41 +13,7 @@ var svg = d3.select("#sankey").append("svg")
 
 var color = d3.scaleOrdinal(d3.schemeCategory20);
 
-colors = [
-    "#893448", //1
-    "#c05050", //19
-    "#d95850", //2
-    "#d95850", //3
-    "#eb8146", //4
-    "#f5994e", //18
-    "#ffb248", //5
-    "#e5cf0d", //14
-    "#f2d643", //6
-    "#c6b38e", //23
-    "#ffb980", //12
-    "#dcc392", //26
-    "#ebdba4", //7
-    "#f3d999", //24
-    "#f5e8c8", //21
-    "#b8d2c7", //22
-    "#edafda",
-    "#d3758f", //25
-    "#f58db2",
-    "#f2b3c9",
-    "#cbb0e3",
-    "#9a7fd1", //16
-    "#2ec7c9", //9
-    "#b6a2de", //10
-    "#5ab1ef", //11
-    "#82b6e9", //29 
-    "#82b6e9", //29
-    "#07a2a4", //15
-    "#e01f54", //17
-    "#008acd", //8
-    "#c14089", //20
-    "#d87a80", //13
-
-]
+colors = []
 //不同算法对比
 $("#sampling").on("click", function () {
     console.log("draw_sankey")
@@ -57,32 +23,34 @@ $("#sampling").on("click", function () {
 
     samplingRatio = $(".jws-text").text();
     samplingRatio = parseInt(samplingRatio.substring(0, samplingRatio.length - 1))
-    samplingRatio = samplingRatio - (samplingRatio % 5)
+    // samplingRatio = samplingRatio - (samplingRatio % 5)
     sampledComFilePath = ""
 
     if ($("#No1").val() == "forestfire") {
-        if (samplingRatio >= 5 && samplingRatio <= 80) sampledComFilePath = `data/ansdata/filepath${samplingRatio}_com.csv`
-        else if (samplingRatio < 5) sampledComFilePath = `data/ansdata/filepath5_com.csv`
-        else if (samplingRatio > 80) sampledComFilePath = `data/ansdata/filepath80_com.csv`
+        sampledComFilePath = `sankey_data/facebook/forestfire/facebook_fire_nodes${samplingRatio}.csv`
+        // if (samplingRatio >= 5 && samplingRatio <= 80) sampledComFilePath = `data/ansdata/filepath${samplingRatio}_com.csv`
+        // else if (samplingRatio < 5) sampledComFilePath = `data/ansdata/filepath5_com.csv`
+        // else if (samplingRatio > 80) sampledComFilePath = `data/ansdata/filepath80_com.csv`
     } else if ($("#No1").val() == "based on node") {
-        if (samplingRatio >= 5 && samplingRatio <= 45) sampledComFilePath = `data/bondata/bon${samplingRatio}_com.csv`
-        else if (samplingRatio < 5) path = `data/bondata/bon5_com.csv`
-        else if (samplingRatio > 45) sampledComFilePath = `data/bondata/bon45_com.csv`
+        // if (samplingRatio >= 5 && samplingRatio <= 45) sampledComFilePath = `data/bondata/bon${samplingRatio}_com.csv`
+        // else if (samplingRatio < 5) path = `data/bondata/bon5_com.csv`
+        // else if (samplingRatio > 45) sampledComFilePath = `data/bondata/bon45_com.csv`
     } else if ($("#No1").val() == "randomwalk") {
-        if (samplingRatio >= 5 && samplingRatio <= 45) sampledComFilePath = `data/rmdata/rm${samplingRatio}_com.csv`
-        else if (samplingRatio < 5) sampledComFilePath = `data/rmdata/rm5_com.csv`
-        else if (samplingRatio > 45) sampledComFilePath = `data/rmdata/rm45_com.csv`
+        // if (samplingRatio >= 5 && samplingRatio <= 45) sampledComFilePath = `data/rmdata/rm${samplingRatio}_com.csv`
+        // else if (samplingRatio < 5) sampledComFilePath = `data/rmdata/rm5_com.csv`
+        // else if (samplingRatio > 45) sampledComFilePath = `data/rmdata/rm45_com.csv`
     }
     draw_sankey(sampledComFilePath, samplingRatio)
 })
 
 function draw_sankey(path, samplingRatio) {
-    d3.csv("data/ansdata/filepath_ori_com.csv", function (ori_nodes1) {
+    d3.csv("sankey_data/facebook/forestfire/facebook_fire_nodes.csv", function (ori_nodes1) {
         d3.csv(path, function (sam_nodes1) {
             ans = find_com(50, ori_nodes1, sam_nodes1)
             ori_node_map = deal_ori_data(ans, ori_nodes1)
             sam_node_map = deal_sam_data(ans, sam_nodes1, samplingRatio)
             color_map_new(ans.diff_vector, ori_node_map, sam_node_map)
+            optimize(sam_node_map,ori_node_map)
             draw_ori_node(ans, ori_node_map)
             draw_sam_node(ans, sam_node_map)
             link_data = deal_link_data(ans, ori_node_map, sam_node_map)
@@ -192,9 +160,28 @@ function find_com(numbers_of_com, ori_nodes, sam_nodes) {
 }
 
 function color_map_new(diff_vector, ori_node_map, sam_node_map) {
-    ori_node_map.forEach(function (value, key) {
-        value.color = colors[value.id]
+    //构造20种颜色
+    for(i=0; i<1; i+=0.08){
+        colors.push(String(d3.interpolateSpectral(i)))
+    }
+    //原始社区
+    info_entropy_max = 0
+    ori_node_map.forEach(function(value, key){
+        info_entropy_max = Math.max(info_entropy_max,value.info_entropy)
     })
+    info_entropy_scale = d3.scaleLinear().domain([0,info_entropy_max]).range([1,0])
+    ori_node_map.forEach(function (value, key) {
+        //原始idex映射颜色
+        value.color = colors[value.index]
+    })
+
+    //采样后的社区
+    info_entropy_max = 0
+    sam_node_map.forEach(function(value,key){
+        info_entropy_max = Math.max(info_entropy_max,value.info_entropy)
+    })
+    info_entropy_scale = d3.scaleLinear().domain([0,info_entropy_max]).range([0,1])
+    //采样后社区和最大匹配同色
     node_info = new Array(sam_node_map.size + 1).fill(0)
     for (i = 0; i < diff_vector.length; i++) {
         temp_array = Array.from(diff_vector[i])
@@ -207,7 +194,8 @@ function color_map_new(diff_vector, ori_node_map, sam_node_map) {
         }
     }
     sam_node_map.forEach(function (value, key) {
-        if (value.color == undefined) value.color = color(value.id)
+        // if (value.color == undefined) value.color = d3.interpolateViridis(info_entropy_scale(value.info_entropy))
+        value.color = ori_node_map.get(value.matched_id).color
     })
 
     console.log("ori_node_map: ", ori_node_map)
@@ -242,14 +230,19 @@ function deal_ori_data(ans, ori_nodes) {
     }
     //原始社区排序,node_info有序序列
     node_info = Array.from(node_info_map)
-    //原始社区按照大小排序
-    node_info.sort(function(a,b){
-        return b[1].node_num-a[1].node_num
-    })
-    //原始社区按照信息熵排序
-    node_info.sort(function(a,b){
-        return b[1].info_entropy - a[1].info_entropy
-    })
+    sort_methord = document.getElementById("sortmethord").value
+    if(sort_methord == 'based_on_nodesize'){
+        //原始社区按照大小排序
+        node_info.sort(function(a,b){
+            return b[1].node_num-a[1].node_num
+        })
+    }
+    else if(sort_methord == 'based_on_infoentropy'){
+        //原始社区按照信息熵排序
+        node_info.sort(function(a,b){
+            return b[1].info_entropy - a[1].info_entropy
+        })
+    } 
 
     var scale = d3.scaleLinear().domain([0, ori_nodes.length]).range([0, width- 5 - (com_max - 1) * 2])
     var temp_start = 20
@@ -261,6 +254,7 @@ function deal_ori_data(ans, ori_nodes) {
             "width": scale(node_info_map.get(rect_id).node_num),
             "dy": 20,
             "dx": temp_start,
+            "index": i,
             "num_of_node": node_info_map.get(rect_id).node_num,
         }
         temp_start += scale(node_info_map.get(rect_id).node_num)
@@ -360,6 +354,7 @@ function deal_sam_data(ans, sam_nodes, smp_data) {
             "width": scale(node_info.get(i)),
             "dy": 20,
             "dx": ori_node_map.get(ori_ind).dx,
+            "matched_id": ori_ind,
             "num_of_node": node_info.get(i),
         }
         a.info_entropy = add_information_entropy(ans,"sampling",a.id)
@@ -588,4 +583,25 @@ function add_information_entropy(ans,flag,community_id){
         })
         return -ans_info_entropy
     }
+}
+//优化采样后社区的位置
+function optimize(sam_node_map,ori_node_map){
+    max_dx_sam_id = 0
+    sam_node_map.forEach(function(value,key){
+        if(sam_node_map.get(max_dx_sam_id).dx < value.dx) max_dx_sam_id = value.id
+    })
+    sam_node_array = Array.from(sam_node_map)
+    sam_node_array.sort(function(a,b){
+        return b[1].num_of_node - a[1].num_of_node
+    })
+    best_padleft = 0
+    for( i=0; i<sam_node_array.length; i++ ){
+        temp_padleft = ori_node_map.get(sam_node_array[i][1].matched_id).dx - sam_node_array[i][1].dx
+        if(temp_padleft>0 && sam_node_map.get(max_dx_sam_id).dx + sam_node_map.get(max_dx_sam_id).width + temp_padleft < width){
+            best_padleft = temp_padleft;break;
+        }
+    }
+    sam_node_map.forEach(function(value,key){
+        value.dx += best_padleft
+    })
 }
